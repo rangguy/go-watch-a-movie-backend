@@ -1,9 +1,9 @@
 FROM golang:1.19-alpine AS builder
 WORKDIR /app
-COPY . .
+COPY go.mod go.sum ./
 RUN go mod download
+COPY . .
 RUN go build -o ./go-movies-backend ./cmd/api/main.go
- 
 
 FROM alpine:latest AS runner
 WORKDIR /app
