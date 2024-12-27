@@ -1,8 +1,8 @@
-package main
+package api
 
 import "net/http"
 
-func (app *application) enableCORS(h http.Handler) http.Handler {
+func (app *Application) enableCORS(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "https://go-watch-a-movie.vercel.app/")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -17,9 +17,9 @@ func (app *application) enableCORS(h http.Handler) http.Handler {
 	})
 }
 
-func (app *application) authRequired(next http.Handler) http.Handler {
+func (app *Application) authRequired(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _, err := app.auth.GetTokenFromHeaderAndVerify(w, r)
+		_, _, err := app.Auth.GetTokenFromHeaderAndVerify(w, r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return

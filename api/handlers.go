@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"backend/intenal/graph"
@@ -17,7 +17,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-func (app *application) Home(w http.ResponseWriter, r *http.Request) {
+func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
 	var payload = struct {
 		Status  string `json:"status"`
 		Message string `json:"message"`
@@ -31,7 +31,7 @@ func (app *application) Home(w http.ResponseWriter, r *http.Request) {
 	_ = app.writeJSON(w, http.StatusOK, payload)
 }
 
-func (app *application) AllMovies(w http.ResponseWriter, r *http.Request) {
+func (app *Application) AllMovies(w http.ResponseWriter, r *http.Request) {
 	movies, err := app.DB.AllMovies()
 	if err != nil {
 		app.errorJSON(w, err)
@@ -41,7 +41,7 @@ func (app *application) AllMovies(w http.ResponseWriter, r *http.Request) {
 	_ = app.writeJSON(w, http.StatusOK, movies)
 }
 
-func (app *application) authenticate(w http.ResponseWriter, r *http.Request) {
+func (app *Application) authenticate(w http.ResponseWriter, r *http.Request) {
 	// read json payload
 	var requestPayload struct {
 		Email    string `json:"email"`
@@ -75,21 +75,21 @@ func (app *application) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// generate tokens
-	tokens, err := app.auth.GenerateTokenPair(&u)
+	tokens, err := app.Auth.GenerateTokenPair(&u)
 	if err != nil {
 		app.errorJSON(w, err)
 		return
 	}
 
-	refreshCookie := app.auth.GetRefreshCookie(tokens.RefreshToken)
+	refreshCookie := app.Auth.GetRefreshCookie(tokens.RefreshToken)
 	http.SetCookie(w, refreshCookie)
 
 	app.writeJSON(w, http.StatusAccepted, tokens)
 }
 
-func (app *application) refreshToken(w http.ResponseWriter, r *http.Request) {
+func (app *Application) refreshToken(w http.ResponseWriter, r *http.Request) {
 	for _, cookie := range r.Cookies() {
-		if cookie.Name == app.auth.CookieName {
+		if cookie.Name == app.Auth.CookieName {
 			claims := &Claims{}
 			refrehToken := cookie.Value
 
@@ -121,25 +121,25 @@ func (app *application) refreshToken(w http.ResponseWriter, r *http.Request) {
 				LastName:  user.LastName,
 			}
 
-			tokenPairs, err := app.auth.GenerateTokenPair(&u)
+			tokenPairs, err := app.Auth.GenerateTokenPair(&u)
 			if err != nil {
 				app.errorJSON(w, errors.New("error generating tokens"), http.StatusUnauthorized)
 				return
 			}
 
-			http.SetCookie(w, app.auth.GetRefreshCookie(tokenPairs.RefreshToken))
+			http.SetCookie(w, app.Auth.GetRefreshCookie(tokenPairs.RefreshToken))
 
 			app.writeJSON(w, http.StatusOK, tokenPairs)
 		}
 	}
 }
 
-func (app *application) logout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, app.auth.GetExpiredRefreshCookie())
+func (app *Application) logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, app.Auth.GetExpiredRefreshCookie())
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (app *application) MovieCatalog(w http.ResponseWriter, r *http.Request) {
+func (app *Application) MovieCatalog(w http.ResponseWriter, r *http.Request) {
 	movies, err := app.DB.AllMovies()
 	if err != nil {
 		app.errorJSON(w, err)
@@ -149,7 +149,7 @@ func (app *application) MovieCatalog(w http.ResponseWriter, r *http.Request) {
 	_ = app.writeJSON(w, http.StatusOK, movies)
 }
 
-func (app *application) GetMovie(w http.ResponseWriter, r *http.Request) {
+func (app *Application) GetMovie(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	movieID, err := strconv.Atoi(id)
 	if err != nil {
@@ -168,7 +168,7 @@ func (app *application) GetMovie(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (app *application) MovieForEdit(w http.ResponseWriter, r *http.Request) {
+func (app *Application) MovieForEdit(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	movieID, err := strconv.Atoi(id)
 	if err != nil {
@@ -193,7 +193,7 @@ func (app *application) MovieForEdit(w http.ResponseWriter, r *http.Request) {
 	_ = app.writeJSON(w, http.StatusOK, payload)
 }
 
-func (app *application) AllGenres(w http.ResponseWriter, r *http.Request) {
+func (app *Application) AllGenres(w http.ResponseWriter, r *http.Request) {
 	genres, err := app.DB.AllGenres()
 	if err != nil {
 		app.errorJSON(w, err)
@@ -203,7 +203,7 @@ func (app *application) AllGenres(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusOK, genres)
 }
 
-func (app *application) InsertMovie(w http.ResponseWriter, r *http.Request) {
+func (app *Application) InsertMovie(w http.ResponseWriter, r *http.Request) {
 	var movie models.Movie
 
 	err := app.readJSON(w, r, &movie)
@@ -239,7 +239,7 @@ func (app *application) InsertMovie(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusAccepted, resp)
 }
 
-func (app *application) getPoster(movie models.Movie) models.Movie {
+func (app *Application) getPoster(movie models.Movie) models.Movie {
 	type TheMovieDB struct {
 		Page    int `json:"page"`
 		Results []struct {
@@ -257,8 +257,8 @@ func (app *application) getPoster(movie models.Movie) models.Movie {
 		return movie
 	}
 
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "Application/json")
+	req.Header.Add("Content-Type", "Application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -284,7 +284,7 @@ func (app *application) getPoster(movie models.Movie) models.Movie {
 	return movie
 }
 
-func (app *application) UpdateMovie(w http.ResponseWriter, r *http.Request) {
+func (app *Application) UpdateMovie(w http.ResponseWriter, r *http.Request) {
 	var payload models.Movie
 
 	err := app.readJSON(w, r, &payload)
@@ -326,7 +326,7 @@ func (app *application) UpdateMovie(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusAccepted, resp)
 }
 
-func (app *application) DeleteMovie(w http.ResponseWriter, r *http.Request) {
+func (app *Application) DeleteMovie(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		app.errorJSON(w, err)
@@ -347,7 +347,7 @@ func (app *application) DeleteMovie(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusAccepted, resp)
 }
 
-func (app *application) AllMoviesByGenre(w http.ResponseWriter, r *http.Request) {
+func (app *Application) AllMoviesByGenre(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		app.errorJSON(w, err)
@@ -363,7 +363,7 @@ func (app *application) AllMoviesByGenre(w http.ResponseWriter, r *http.Request)
 	app.writeJSON(w, http.StatusOK, movies)
 }
 
-func (app *application) moviesGraphQL(w http.ResponseWriter, r *http.Request) {
+func (app *Application) moviesGraphQL(w http.ResponseWriter, r *http.Request) {
 	// populate graph type with the movies
 	movies, _ := app.DB.AllMovies()
 

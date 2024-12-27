@@ -1,7 +1,7 @@
 package main
 
 import (
-	"backend/intenal/repository"
+	"backend/api"
 	"backend/intenal/repository/dbrepo"
 	"flag"
 	"fmt"
@@ -12,24 +12,13 @@ import (
 
 const port = 8080
 
-type application struct {
-	DSN          string
-	Domain       string
-	DB           repository.DatabaseRepo
-	auth         Auth
-	JWTSecret    string
-	JWTIssuer    string
-	JWTAudience  string
-	CookieDomain string
-	APIKey       string
-}
-
 func main() {
-	// set application config
-	var app application
+	// set Application config
+	var app api.Application
 
 	// read from command line
-	flag.StringVar(&app.DSN, "dsn", "host=localhost port=5433 user=postgres password=postgres dbname=movies sslmode=disable timezone=UTC connect_timeout=5", "Postgres connection string")
+	flag.StringVar(&app.DSN, "dsn", "host=postgres.railway.internal port=5432 user=postgres password=CwBXIKpmrDqkNjJpAAOEKOxFGxKIdKnn dbname=railway sslmode=disable timezone=UTC connect_timeout=5", "Postgres connection string")
+	//flag.StringVar(&app.DSN, "dsn", "host=localhost port=5433 user=postgres password=postgresql dbname=movies sslmode=disable timezone=UTC connect_timeout=5", "Postgres connection string")
 	flag.StringVar(&app.JWTSecret, "jwt-secret", "verysecret", "signing secret")
 	flag.StringVar(&app.JWTIssuer, "jwt-issuer", "example.com", "signing issuer")
 	flag.StringVar(&app.JWTAudience, "jwt-audience", "example.com", "signing audience")
@@ -39,14 +28,19 @@ func main() {
 	flag.Parse()
 
 	// connect to database
-	conn, err := app.connectToDB()
+	conn, err := app.ConnectToDB()
 	if err != nil {
 		log.Fatal(err)
 	}
 	app.DB = &dbrepo.PostgresDBRepo{DB: conn}
 	defer app.DB.Connection().Close()
 
-	app.auth = Auth{
+	// Jalankan migrasi setelah koneksi DB
+	if err := app.RunMigrations(); err != nil {
+		log.Fatal("Migration failed:", err)
+	}
+
+	app.Auth = api.Auth{
 		Issuer:        app.JWTIssuer,
 		Audience:      app.JWTAudience,
 		Secret:        app.JWTSecret,
@@ -57,10 +51,10 @@ func main() {
 		CookieDomain:  app.CookieDomain,
 	}
 
-	log.Println("Starting application on port", port)
+	log.Println("Starting Application on port", port)
 
 	// start a web server
-	err = http.ListenAndServe(fmt.Sprintf(":%d", port), app.routes())
+	err = http.ListenAndServe(fmt.Sprintf(":%d", port), app.Routes())
 	if err != nil {
 		log.Fatal(err)
 	}
