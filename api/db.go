@@ -2,15 +2,13 @@ package api
 
 import (
 	"backend/intenal/repository"
-	"bytes"
 	"database/sql"
-	"log"
-	"os"
-	"unicode/utf8"
-
 	_ "github.com/jackc/pgconn"
 	_ "github.com/jackc/pgx/v4"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"log"
+	"os"
+	"strings"
 )
 
 type Application struct {
@@ -55,15 +53,21 @@ func (app *Application) RunMigrations() error {
 		return err
 	}
 
-	// Hapus BOM jika ada
-	content = bytes.TrimPrefix(content, []byte{0xEF, 0xBB, 0xBF})
+	// Pecah menjadi pernyataan SQL individual
+	statements := strings.Split(string(content), ";")
 
-	// Validasi UTF-8
-	if !utf8.Valid(content) {
-		// Convert ke UTF-8 jika bukan
-		content = bytes.ToValidUTF8(content, []byte(""))
+	// Eksekusi setiap pernyataan
+	for _, stmt := range statements {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue
+		}
+
+		_, err = app.DB.Connection().Exec(stmt)
+		if err != nil {
+			return err
+		}
 	}
 
-	_, err = app.DB.Connection().Exec(string(content))
-	return err
+	return nil
 }
