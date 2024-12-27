@@ -2,9 +2,11 @@ package api
 
 import (
 	"backend/intenal/repository"
+	"bytes"
 	"database/sql"
 	"log"
 	"os"
+	"unicode/utf8"
 
 	_ "github.com/jackc/pgconn"
 	_ "github.com/jackc/pgx/v4"
@@ -51,6 +53,15 @@ func (app *Application) RunMigrations() error {
 	content, err := os.ReadFile("movies.sql")
 	if err != nil {
 		return err
+	}
+
+	// Hapus BOM jika ada
+	content = bytes.TrimPrefix(content, []byte{0xEF, 0xBB, 0xBF})
+
+	// Validasi UTF-8
+	if !utf8.Valid(content) {
+		// Convert ke UTF-8 jika bukan
+		content = bytes.ToValidUTF8(content, []byte(""))
 	}
 
 	_, err = app.DB.Connection().Exec(string(content))
